@@ -26,7 +26,7 @@ class Response implements ArrayInstantiationInterface
      *
      * @var BodyInterface[]
      */
-    private $bodyList;
+    private $bodyList = [];
 
     /**
      *
@@ -60,12 +60,13 @@ class Response implements ArrayInstantiationInterface
     /**
      * Create a new response object from an array
      *
-     * @param string $statusCode
-     * @param array  $data
+     * @param string        $statusCode
+     * @param array         $data
+     * @param ApiDefinition $apiDefinition
      *
      * @return Response
      */
-    public static function createFromArray($statusCode, array $data = [])
+    public static function createFromArray($statusCode, array $data = [], ApiDefinition $apiDefinition = null)
     {
         $response = new static($statusCode);
 

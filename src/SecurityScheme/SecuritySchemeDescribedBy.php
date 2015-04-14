@@ -71,8 +71,8 @@ class SecuritySchemeDescribedBy implements ArrayInstantiationInterface
     /**
      * Create a new SecuritySchemeDescribedBy from an array of data
      *
-     * @param string    $key
-     * @param array     $data
+     * @param string $key
+     * @param array $data
      * [
      *  headers:            ?array
      *  queryParameters:    ?array

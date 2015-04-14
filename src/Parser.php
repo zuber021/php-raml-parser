@@ -85,8 +85,7 @@ class Parser
         // if null then use a default list
         if ($schemaParsers === null) {
             $schemaParsers = [
-                new JsonSchemaParser(),
-                new XmlSchemaParser()
+                new JsonSchemaParser()
             ];
         }
 
@@ -241,11 +240,13 @@ class Parser
 
         $ramlData = $this->parseResourceTypes($ramlData);
 
+        $ramlData = $this->parseMediaType($ramlData);
+
         if ($parseSchemas) {
             if (isset($ramlData['schemas'])) {
                 $schemas = [];
                 foreach ($ramlData['schemas'] as $schemaCollection) {
-                    foreach ($schemaCollection as $schemaName => $schema) {
+                    foreach($schemaCollection as $schemaName => $schema) {
                         $schemas[$schemaName] = $schema;
                     }
                 }
@@ -256,6 +257,7 @@ class Parser
                         $value = $this->replaceSchemas($value, $schemas);
                     }
                     if (is_array($value)) {
+                        $value = $this->recurseNormaliseSchemas($value, $rootDir);
                         $value = $this->recurseAndParseSchemas($value, $rootDir);
                     }
                     $ramlData[$key] = $value;
@@ -314,11 +316,36 @@ class Parser
                         $schemaParser = $this->schemaParsers[$key];
                         $schemaParser->setSourceUri('file:' . $rootDir . DIRECTORY_SEPARATOR);
                         $value['schema'] = $schemaParser->createSchemaDefinition($value['schema'], $rootDir);
-                    } else {
+                    }  else {
                         throw new InvalidSchemaTypeException($key);
                     }
                 } else {
                     $value = $this->recurseAndParseSchemas($value, $rootDir);
+                }
+            }
+        }
+        return $array;
+    }
+
+    /**
+     * Recursion normalize schema string add defaults MediaType
+     *
+     * @param $array
+     * @param $rootDir
+     *
+     * @return array
+     */
+    private function recurseNormaliseSchemas($array, $rootDir)
+    {
+        foreach ($array as $key => &$value) {
+            if (is_array($value)) {
+                if (isset($value['schema'])) {
+                    if ($key == 'body') {
+                        $newValue[$this->mediaType] = $value;
+                        $value = $newValue;
+                    }
+                } else {
+                    $value = $this->recurseNormaliseSchemas($value, $rootDir);
                 }
             }
         }
@@ -687,5 +714,19 @@ class Parser
             $newTrait[$newKey] = $value;
         }
         return $newTrait;
+    }
+
+    /**
+     * @param $ramlData
+     *
+     * @return array
+     */
+    private function parseMediaType($ramlData)
+    {
+        if (array_key_exists('mediaType', $ramlData)) {
+            $this->mediaType  = $ramlData['mediaType'];
+        }
+
+        return $ramlData;
     }
 }

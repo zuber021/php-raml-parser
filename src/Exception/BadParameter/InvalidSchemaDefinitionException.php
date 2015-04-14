@@ -6,9 +6,7 @@ use RuntimeException;
 use Raml\Exception\ExceptionInterface;
 use Raml\Exception\BadParameterExceptionInterface;
 
-class InvalidSchemaDefinitionException extends RuntimeException implements
-    ExceptionInterface,
-    BadParameterExceptionInterface
+class InvalidSchemaDefinitionException extends RuntimeException implements ExceptionInterface, BadParameterExceptionInterface
 {
     public function __construct()
     {

@@ -6,7 +6,7 @@ namespace Raml;
  *
  * @see http://raml.org/spec.html#resources-and-nested-resources
  */
-class Resource implements ArrayInstantiationInterface
+class Resource
 {
     /**
      * The URI of this resource (required)
@@ -69,6 +69,11 @@ class Resource implements ArrayInstantiationInterface
      */
     private $methods = [];
 
+    /**
+     * @var SecurityScheme[]
+     */
+    private $securitySchemes = [];
+
     // ---
 
     /**
@@ -95,19 +100,21 @@ class Resource implements ArrayInstantiationInterface
     /**
      * Create a Resource from an array
      *
-     * @param string        $uri
-     * @param ApiDefinition $apiDefinition
-     * @param array         $data
-     * [
+     * @param string            $uri
+     * @param array             $data
+     *  [
      *  uri:               string
      *  displayName:       ?string
      *  description:       ?string
      *  baseUriParameters: ?array
-     * ]
+     *  ]
      *
-     * @return self
+     * @param ApiDefinition     $apiDefinition
+     * @param Resource          $parentResource
+     *
+     * @return Resource
      */
-    public static function createFromArray($uri, array $data = [], ApiDefinition $apiDefinition = null)
+    public static function createFromArray($uri, array $data = [], ApiDefinition $apiDefinition = null, Resource $parentResource = null)
     {
         $resource = new static($uri, $apiDefinition);
 
@@ -124,7 +131,7 @@ class Resource implements ArrayInstantiationInterface
         if (isset($data['baseUriParameters'])) {
             foreach ($data['baseUriParameters'] as $key => $baseUriParameter) {
                 $resource->addBaseUriParameter(
-                    BaseUriParameter::createFromArray($key, $baseUriParameter)
+                    NamedParameter::createFromArray($key, $baseUriParameter)
                 );
             }
         }
@@ -135,22 +142,49 @@ class Resource implements ArrayInstantiationInterface
                     NamedParameter::createFromArray($key, $uriParameter ?: [])
                 );
             }
+
+        }
+
+        if (null !== $parentResource) {
+            foreach ($parentResource->getUriParameters() as $uriParameter) {
+                $resource->addUriParameter($uriParameter);
+            }
+        }
+
+        if (isset($data['securedBy'])) {
+            foreach ($data['securedBy'] as $key => $securedBy) {
+                if (null !== $securedBy && $apiDefinition->getSecurityScheme($securedBy) instanceof SecurityScheme) {
+                    $resource->addSecurityScheme($apiDefinition->getSecurityScheme($securedBy));
+                } else {
+                    $resource->addSecurityScheme(SecurityScheme::createFromArray('null', array(), $apiDefinition));
+                }
+            }
         }
 
         foreach ($data as $key => $value) {
+            if (count($resource->getSecuritySchemes()) > 0) {
+                foreach ($resource->getSecuritySchemes() as $securityScheme) {
+                    if ('null' !== $securityScheme->getKey() && $securityScheme instanceOf SecurityScheme) {
+                        if (! isset($value['securedBy']) && is_array($value)) {
+                            $value['securedBy'][] = $securityScheme->getKey();
+                        }
+                    }
+                }
+            }
             if (strpos($key, '/') === 0) {
                 $resource->addResource(
                     Resource::createFromArray(
                         $uri.$key,
                         $value ?: [],
-                        $apiDefinition
+                        $apiDefinition,
+                        $resource
                     )
                 );
             } elseif (in_array(strtoupper($key), Method::$validMethods)) {
                 $resource->addMethod(
                     Method::createFromArray(
                         $key,
-                        $value,
+                        $value ?: [],
                         $apiDefinition
                     )
                 );
@@ -355,5 +389,25 @@ class Resource implements ArrayInstantiationInterface
         }
 
         return $this->methods[$method];
+    }
+
+    /**
+     * Security scheme for resources
+     *
+     * @param SecurityScheme $securityScheme
+     */
+    public function addSecurityScheme(SecurityScheme $securityScheme)
+    {
+        $this->securitySchemes[$securityScheme->getKey()] = $securityScheme;
+    }
+
+    /**
+     * Security scheme for all method resources
+     *
+     * @return SecurityScheme[]
+     */
+    private function getSecuritySchemes()
+    {
+        return $this->securitySchemes;
     }
 }

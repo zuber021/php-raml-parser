@@ -503,7 +503,7 @@ class ApiDefinition implements ArrayInstantiationInterface
      */
     public function addSchemaCollection($collectionName, $schemas)
     {
-        $this->schemaCollections[$collectionName] = [];
+        $this->schemaCollections[$collectionName]  = [];
 
         foreach ($schemas as $schemaName => $schema) {
             $this->addSchema($collectionName, $schemaName, $schema);
@@ -615,6 +615,16 @@ class ApiDefinition implements ArrayInstantiationInterface
     public function addSecuredBy(SecurityScheme $securityScheme)
     {
         $this->securedBy[$securityScheme->getKey()] = $securityScheme;
+    }
+
+    /**
+     * List allowed security schemes
+     *
+     * @return SecurityScheme[]
+     */
+    public function getSecuritySchemes()
+    {
+        return $this->securitySchemes;
     }
 
     // ---

@@ -147,6 +147,14 @@ class Method implements ArrayInstantiationInterface
             }
         }
 
+        if (isset($data['baseUriParameters'])) {
+            foreach ($data['baseUriParameters'] as $key => $queryParameterData) {
+                $method->addBaseUriParameter(
+                    NamedParameter::createFromArray($key, $queryParameterData)
+                );
+            }
+        }
+        
         if (isset($data['headers'])) {
             foreach ($data['headers'] as $key => $header) {
                 $method->addHeader(NamedParameter::createFromArray($key, $header));
@@ -155,14 +163,6 @@ class Method implements ArrayInstantiationInterface
 
         if (isset($data['description'])) {
             $method->setDescription($data['description']);
-        }
-
-        if (isset($data['baseUriParameters'])) {
-            foreach ($data['baseUriParameters'] as $key => $baseUriParameter) {
-                $method->addBaseUriParameter(
-                    BaseUriParameter::createFromArray($key, $baseUriParameter)
-                );
-            }
         }
 
         if (isset($data['protocols'])) {
@@ -174,7 +174,7 @@ class Method implements ArrayInstantiationInterface
         if (isset($data['responses']) && is_array($data['responses'])) {
             foreach ($data['responses'] as $responseCode => $response) {
                 $method->addResponse(
-                    Response::createFromArray($responseCode, $response ?: [])
+                    Response::createFromArray($responseCode, $response ?: [], $apiDefinition)
                 );
             }
         }
@@ -189,7 +189,7 @@ class Method implements ArrayInstantiationInterface
 
         if (isset($data['securedBy'])) {
             foreach ($data['securedBy'] as $key => $securedBy) {
-                if ($securedBy) {
+                if (null !== $securedBy && $apiDefinition->getSecurityScheme($securedBy) instanceof SecurityScheme) {
                     $method->addSecurityScheme($apiDefinition->getSecurityScheme($securedBy));
                 } else {
                     $method->addSecurityScheme(SecurityScheme::createFromArray('null', array(), $apiDefinition));
@@ -373,7 +373,7 @@ class Method implements ArrayInstantiationInterface
     public function getBodyByType($type)
     {
         if (!isset($this->bodyList[$type])) {
-            throw new \Exception('No body of type "' . $type . '"');
+            throw new \Exception('No body of type "'.$type.'"');
         }
 
         return $this->bodyList[$type];
@@ -382,7 +382,7 @@ class Method implements ArrayInstantiationInterface
     /**
      * Get an array of all bodies
      *
-     * @return array The array of bodies
+     * @return BodyInterface[] The array of bodies
      */
     public function getBodies()
     {
