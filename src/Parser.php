@@ -63,6 +63,16 @@ class Parser
      */
     private $allowDirectoryTraversal = true;
 
+    /**
+     * @var Resource
+     */
+    private $resourceTypes;
+
+    /**
+     * @var string Base media type
+     */
+    private $mediaType;
+
     // ---
 
     /**
@@ -236,11 +246,12 @@ class Parser
             throw new RamlParserException();
         }
 
+        $ramlData = $this->parseMediaType($ramlData);
+
         $ramlData = $this->parseTraits($ramlData);
 
         $ramlData = $this->parseResourceTypes($ramlData);
 
-        $ramlData = $this->parseMediaType($ramlData);
 
         if ($parseSchemas) {
             if (isset($ramlData['schemas'])) {
@@ -257,7 +268,6 @@ class Parser
                         $value = $this->replaceSchemas($value, $schemas);
                     }
                     if (is_array($value)) {
-                        $value = $this->recurseNormaliseSchemas($value, $rootDir);
                         $value = $this->recurseAndParseSchemas($value, $rootDir);
                     }
                     $ramlData[$key] = $value;
@@ -331,40 +341,44 @@ class Parser
      * Recursion normalize schema string add defaults MediaType
      *
      * @param $array
-     * @param $rootDir
      *
      * @return array
      */
-    private function recurseNormaliseSchemas($array, $rootDir)
+    private function recurseNormaliseResourceTypes($array)
     {
-        foreach ($array as $key => &$value) {
-            if (is_array($value)) {
-                if (isset($value['schema'])) {
-                    if ($key == 'body') {
+        if (is_array($array)) {
+            foreach ($array as $key => &$value) {
+                if (is_array($value)) {
+                    if ($key == 'body' && $value) {
                         $newValue[$this->mediaType] = $value;
                         $value = $newValue;
+                    } else {
+                        $value = $this->recurseNormaliseResourceTypes($value);
                     }
-                } else {
-                    $value = $this->recurseNormaliseSchemas($value, $rootDir);
                 }
             }
         }
+
         return $array;
     }
 
     /**
      * Parse the security settings
      *
-     * @param $securitySchemes
+     * @param $securitySchemesArray
      *
      * @return array
      */
-    private function parseSecuritySettings($securitySchemes)
+    private function parseSecuritySettings($securitySchemesArray)
     {
-        foreach ($securitySchemes as $key => $securityScheme) {
-            if (isset($securityScheme['type']) && isset($this->securitySettingsParsers[$securityScheme['type']])) {
-                $parser = $this->securitySettingsParsers[$securityScheme['type']];
-                $securitySchemes[$key]['settings'] = $parser->createSecuritySettings($securityScheme['settings']);
+        $securitySchemes = [];
+
+        foreach ($securitySchemesArray as $securitySchemes) {
+            foreach ($securitySchemes as $key => $securityScheme) {
+                if (isset($securityScheme['type']) && isset($this->securitySettingsParsers[$securityScheme['type']])) {
+                    $parser = $this->securitySettingsParsers[$securityScheme['type']];
+                    $securitySchemes[$key]['settings'] = $parser->createSecuritySettings($securityScheme['settings']);
+                }
             }
         }
         return $securitySchemes;
@@ -385,14 +399,19 @@ class Parser
             foreach ($ramlData['resourceTypes'] as $trait) {
                 foreach ($trait as $k => $t) {
                     $keyedTraits[$k] = $t;
+                    $keyedTraits[$k] = $this->recurseNormaliseResourceTypes($t);
                 }
             }
+
+            unset($ramlData['resourceTypes']);
 
             foreach ($ramlData as $key => $value) {
                 if (strpos($key, '/') === 0) {
                     $name = (isset($value['displayName'])) ? $value['displayName'] : substr($key, 1);
+                    $ramlData[$key] = $this->recurseNormaliseResourceTypes($value);
                     $ramlData[$key] = $this->replaceTypes($value, $keyedTraits, $key, $name, $key);
                 }
+
             }
         }
 
@@ -643,10 +662,10 @@ class Parser
                     $type = $this->applyTraitVariables($traitVariables, $types[$value]);
                 }
 
-                $newArray = array_replace_recursive($newArray, $this->replaceTypes($type, $types, $path, $name, $key));
+                $replace = $this->replaceTypes($type, $types, $path, $name, $key);
+                $newArray = array_replace_recursive($newArray, $replace);
             } else {
                 $newValue = $this->replaceTypes($value, $types, $path, $name, $key);
-
                 if (isset($newArray[$key]) && is_array($newArray[$key])) {
                     $newArray[$key] = array_replace_recursive($newArray[$key], $newValue);
                 } else {

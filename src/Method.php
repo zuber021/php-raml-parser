@@ -135,7 +135,7 @@ class Method implements ArrayInstantiationInterface
     {
         $method = new static($method, $apiDefinition);
 
-        if (isset($data['body'])) {
+        if (isset($data['body']) && !empty($data['body'])) {
             foreach ($data['body'] as $key => $bodyData) {
                 if (in_array($key, WebFormBody::$validMediaTypes)) {
                     $body = WebFormBody::createFromArray($key, $bodyData);

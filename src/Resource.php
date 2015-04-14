@@ -164,8 +164,11 @@ class Resource
         foreach ($data as $key => $value) {
             if (count($resource->getSecuritySchemes()) > 0) {
                 foreach ($resource->getSecuritySchemes() as $securityScheme) {
-                    if ('null' !== $securityScheme->getKey() && $securityScheme instanceOf SecurityScheme) {
-                        if (! isset($value['securedBy']) && is_array($value)) {
+                    if ($securityScheme instanceOf SecurityScheme && 'null' !== $securityScheme->getKey()) {
+                        if (! isset($value['securedBy'])) {
+                            if (! is_array($value)) {
+                                $value = [];
+                            }
                             $value['securedBy'][] = $securityScheme->getKey();
                         }
                     }
