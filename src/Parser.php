@@ -650,6 +650,9 @@ class Parser
 
         foreach ($raml as $key => $value) {
             if ($key === 'type' && strpos($parentKey, '/') === 0) {
+
+                $preparedTypes = $this->prepareParamsRegexpTypes($raml, $types, $value);
+
                 $type = [];
 
                 $traitVariables = ['resourcePath' => $path, 'resourcePathName' => $name];
@@ -657,9 +660,9 @@ class Parser
                 if (is_array($value)) {
                     $traitVariables = array_merge($traitVariables, current($value));
                     $traitName = key($value);
-                    $type = $this->applyTraitVariables($traitVariables, $types[$traitName]);
-                } elseif (isset($types[$value])) {
-                    $type = $this->applyTraitVariables($traitVariables, $types[$value]);
+                    $type = $this->applyTraitVariables($traitVariables, isset($preparedTypes[$traitName]) ? $preparedTypes[$traitName] : $types[$traitName]);
+                } elseif (isset($types[$value]) || isset($preparedTypes[$value])) {
+                    $type = $this->applyTraitVariables($traitVariables, isset($preparedTypes[$value]) ? $preparedTypes[$value] : $types[$value] );
                 }
 
                 $replace = $this->replaceTypes($type, $types, $path, $name, $key);
@@ -667,7 +670,7 @@ class Parser
             } else {
                 $newValue = $this->replaceTypes($value, $types, $path, $name, $key);
                 if (isset($newArray[$key]) && is_array($newArray[$key])) {
-                    $newArray[$key] = array_replace_recursive($newArray[$key], $newValue);
+                    $newArray[$key] = array_replace_recursive($newArray[$key],(array) $newValue);
                 } else {
                     $newArray[$key] = $newValue;
                 }
@@ -675,6 +678,43 @@ class Parser
 
         }
         return $newArray;
+    }
+
+    /**
+     * Magic method for currect work regular expressions by request types
+     *
+     * @param $raml
+     * @param $types
+     * @param $value
+     *
+     * @return array
+     */
+    protected function prepareParamsRegexpTypes($raml, $types, $value)
+    {
+        $preparedTypes = [];
+        foreach ($types as $resourceType => $resourceValues) {
+
+            if ( is_array($value)) {
+                $resourceName = key($value);
+            } else {
+                $resourceName = $value;
+            }
+
+            if ($resourceName === $resourceType) {
+                $preparedTypes[$resourceType] = $types[$resourceType];
+                foreach ($resourceValues as $resourceKey => $resourceValue) {
+                    if (false !== strpos($resourceKey,'?')) {
+                        $findKey = str_replace('?','', $resourceKey);
+                        if (array_key_exists($findKey, $raml)) {
+                            unset($preparedTypes[$resourceType][$resourceKey]);
+                            $preparedTypes[$resourceType][$findKey] = $resourceValue;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $preparedTypes;
     }
 
     /**
