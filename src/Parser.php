@@ -248,6 +248,8 @@ class Parser
 
         $ramlData = $this->parseMediaType($ramlData);
 
+        $ramlData = $this->recurseNormaliseMediaType($ramlData);
+
         $ramlData = $this->parseTraits($ramlData);
 
         $ramlData = $this->parseResourceTypes($ramlData);
@@ -327,6 +329,7 @@ class Parser
                         $schemaParser->setSourceUri('file:' . $rootDir . DIRECTORY_SEPARATOR);
                         $value['schema'] = $schemaParser->createSchemaDefinition($value['schema'], $rootDir);
                     }  else {
+                        var_dump($value);
                         throw new InvalidSchemaTypeException($key);
                     }
                 } else {
@@ -344,16 +347,20 @@ class Parser
      *
      * @return array
      */
-    private function recurseNormaliseResourceTypes($array)
+    private function recurseNormaliseMediaType($array)
     {
         if (is_array($array)) {
             foreach ($array as $key => &$value) {
                 if (is_array($value)) {
-                    if ($key == 'body' && $value) {
-                        $newValue[$this->mediaType] = $value;
-                        $value = $newValue;
+                    if ($key == 'body' &&
+                        (array_key_exists('schema', $value)
+                        || array_key_exists('example', $value))) {
+                        if (! empty($this->mediaType)) {
+                            $newValue[$this->mediaType] = $value;
+                            $value = $newValue;
+                        }
                     } else {
-                        $value = $this->recurseNormaliseResourceTypes($value);
+                        $value = $this->recurseNormaliseMediaType($value);
                     }
                 }
             }
@@ -399,7 +406,6 @@ class Parser
             foreach ($ramlData['resourceTypes'] as $trait) {
                 foreach ($trait as $k => $t) {
                     $keyedTraits[$k] = $t;
-                    $keyedTraits[$k] = $this->recurseNormaliseResourceTypes($t);
                 }
             }
 
@@ -408,7 +414,6 @@ class Parser
             foreach ($ramlData as $key => $value) {
                 if (strpos($key, '/') === 0) {
                     $name = (isset($value['displayName'])) ? $value['displayName'] : substr($key, 1);
-                    $ramlData[$key] = $this->recurseNormaliseResourceTypes($value);
                     $ramlData[$key] = $this->replaceTypes($value, $keyedTraits, $key, $name, $key);
                 }
 
