@@ -660,6 +660,15 @@ class Parser
 
                 $type = [];
 
+                $name = preg_replace('/{.*?}/','', str_replace('/','', $path));
+
+                /**
+                 * @todo hack
+                 */
+                if (empty($name)) {
+                    $name = str_replace('/','',$parentKey);
+                }
+
                 $traitVariables = ['resourcePath' => $path, 'resourcePathName' => $name];
 
                 if (is_array($value)) {
@@ -670,10 +679,10 @@ class Parser
                     $type = $this->applyTraitVariables($traitVariables, isset($preparedTypes[$value]) ? $preparedTypes[$value] : $types[$value] );
                 }
 
-                $replace = $this->replaceTypes($type, $types, $path, $name, $key);
+                $replace = $this->replaceTypes($type, $types, $key,  isset($value['displayName']) ? $value['displayName'] : $name, $path);
                 $newArray = array_replace_recursive($newArray, $replace);
             } else {
-                $newValue = $this->replaceTypes($value, $types, $path, $name, $key);
+                $newValue = $this->replaceTypes($value, $types, $key, isset($value['displayName']) ? $value['displayName'] : $name, $path);
                 if (isset($newArray[$key]) && is_array($newArray[$key])) {
                     $newArray[$key] = array_replace_recursive($newArray[$key],(array) $newValue);
                 } else {
