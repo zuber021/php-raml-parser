@@ -324,8 +324,15 @@ class Parser
         foreach ($array as $key => &$value) {
             if (is_array($value)) {
                 if (isset($value['schema'])) {
-                    if (! in_array($key, array_keys($this->schemaParsers)) || ! preg_match("|".array_keys($this->schemaParsers)[2]."|", $key, $matches)) {
+                    if (! in_array($key, array_keys($this->schemaParsers))) {
                         echo "Warning: key: ".$key." not found from accept types ".implode(',', array_keys($this->schemaParsers)).PHP_EOL;
+                    }
+
+                    /**
+                     * @todo hack for usage multi json type brain in
+                     */
+                    if (preg_match("|application\/(.*?)\+json|", $key, $matches)) {
+                        $key = 'application/json';
                     }
 
                     $schemaParser = $this->schemaParsers[$key];
