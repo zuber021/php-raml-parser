@@ -324,14 +324,13 @@ class Parser
         foreach ($array as $key => &$value) {
             if (is_array($value)) {
                 if (isset($value['schema'])) {
-                    if (in_array($key, array_keys($this->schemaParsers))) {
-                        $schemaParser = $this->schemaParsers[$key];
-                        $schemaParser->setSourceUri('file:' . $rootDir . DIRECTORY_SEPARATOR);
-                        $value['schema'] = $schemaParser->createSchemaDefinition($value['schema'], $rootDir);
-                    }  else {
-                        var_dump($value);
-                        throw new InvalidSchemaTypeException($key);
+                    if (! in_array($key, array_keys($this->schemaParsers)) || ! preg_match("|".array_keys($this->schemaParsers)[2]."|", $key, $matches)) {
+                        echo "Warning: key: ".$key." not found from accept types ".implode(',', array_keys($this->schemaParsers)).PHP_EOL;
                     }
+
+                    $schemaParser = $this->schemaParsers[$key];
+                    $schemaParser->setSourceUri('file:' . $rootDir . DIRECTORY_SEPARATOR);
+                    $value['schema'] = $schemaParser->createSchemaDefinition($value['schema'], $rootDir);
                 } else {
                     $value = $this->recurseAndParseSchemas($value, $rootDir);
                 }

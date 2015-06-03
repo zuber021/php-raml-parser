@@ -18,7 +18,8 @@ class JsonSchemaParser extends SchemaParserAbstract
      */
     protected $compatibleContentTypes = [
         'application/json',
-        'text/json'
+        'text/json',
+        'application/(.*?)+json',
     ];
 
     // ---
@@ -39,9 +40,9 @@ class JsonSchemaParser extends SchemaParserAbstract
 
         $data = json_decode($schemaString);
 
-        if (!$data) {
-	    echo 'Not valid json';
-            var_export($schemaString);
+        if (! $data) {
+	        echo 'Warning: Not valid json or file not found.'.PHP_EOL;
+            echo 'JSON:'. var_export($schemaString, true).PHP_EOL;
             throw new InvalidJsonException(json_last_error());
         }
 
